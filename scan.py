@@ -9,7 +9,7 @@ import re
 QUERY_STRING = "Приоритет 2030"
 START = 0
 END = 1000
-DB_URL = 'postgresql://scan@localhost:5432/scan'
+DB_URL = 'postgresql://postgres:example@localhost:5432/Priority2030'
 START_DATE='01.01.2017'
 END_DATE=''
 
@@ -113,7 +113,7 @@ def calc_intensity_1(result):
     print (result.id, result.url)
     if (result.content != None):
         for keyword in keywords:
-            r = re.findall(keyword, result.content);
+            r = re.findall(keyword, result.content, re.IGNORECASE);
             value = value + len(r)
     result.intensity_1 = value
     result.save()
@@ -124,7 +124,7 @@ def calc_intensity_3(result):
     print (result.id, result.url)
     if (result.content != None):
         for keyword in keywords:
-            r = re.findall(keyword, result.title);
+            r = re.findall(keyword, result.title, re.IGNORECASE);
             value = value + len(r)
     result.intensity_3 = value
     result.save()
@@ -218,7 +218,7 @@ def calc_intensity_2(result):
     print (result.id, result.url)
     if (result.content != None):
         for keyword in keywords:
-            r = re.findall(keyword, result.content);
+            r = re.findall(keyword, result.content, re.IGNORECASE);
             value = value + len(r)
     result.intensity_2 = value
     result.save()
