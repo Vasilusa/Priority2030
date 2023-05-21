@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.query
     "end" bigint NOT NULL,
     start_date date DEFAULT now(),
     CONSTRAINT query_pkey PRIMARY KEY (id)
-)
+);
 
 
 CREATE TABLE IF NOT EXISTS public.result
@@ -33,3 +33,5 @@ CREATE TABLE IF NOT EXISTS public.result
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
+
+ALTER TABLE public.result ADD "when" date;

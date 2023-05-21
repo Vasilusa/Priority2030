@@ -1,10 +1,12 @@
 import urllib
 from htmldom import htmldom
 import requests
-import html
 from peewee import *
 from datetime import *
 import re
+import locale
+
+locale.setlocale(locale.LC_TIME, ('ru_RU', 'UTF-8'))
 
 QUERY_STRING = "Приоритет 2030"
 START = 0
@@ -14,6 +16,7 @@ START_DATE='01.01.2017'
 END_DATE=''
 
 db = PostgresqlDatabase(DB_URL)
+
 
 class Query(Model):
     id = IntegerField(primary_key=True)
@@ -241,6 +244,29 @@ def calc_intensity(result):
         result.intensity = 0
     result.save()
 
+
+def parse_date(s, base_date):
+    print(s)
+    r = re.match('^(\\d+)\\s(\\w{3}).+(\\d{4})', s)
+    if r is not None:
+        return datetime.strptime(r.group(1) + ' ' + r.group(2) + ' ' + r.group(3), '%d %b %Y')
+    r = re.match('^(\\d+)\\s(день|дня|дней)\\s(назад)', s)
+    if r is not None:
+        d = timedelta(days=int(r.group(1)))
+        return base_date - d
+    r = re.match('^(\\d+)\\s(час|часа|часов)\\s(назад)', s)
+    if r is not None:
+        d = timedelta(hours=int(r.group(1)))
+        return datetime.now() - d
+
+
+def fill_date(result):
+    q = Query.get(Query.id==result.query_id)
+    d = parse_date(result.date_str, q.start_date)
+    if d is not None:
+        result.when = d
+        result.save()
+
 query = search(0, 1000)    
 query_id = query.id
 apply(query_id, download)
@@ -249,3 +275,4 @@ apply(query_id, calc_intensity_2)
 apply(query_id, calc_intensity_3)
 apply(query_id, calc_intensity_composite)
 apply(query_id, calc_intensity)
+apply(query_id, fill_date)
