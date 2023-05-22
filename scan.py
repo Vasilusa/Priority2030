@@ -9,10 +9,9 @@ import matplotlib.pyplot as plt
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from scipy import stats
 
 locale.setlocale(locale.LC_TIME, ('ru_RU', 'UTF-8'))
-
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
 QUERY_STRING = "Приоритет 2030"
 START = 0
@@ -22,7 +21,7 @@ DB_URL = 'postgresql://postgres:example@localhost:5432/Priority2030'
 START_DATE = '01.01.2017'
 END_DATE = ''
 
-THREASHOLD_1 = 80
+THREASHOLD_1 = 0
 THREASHOLD_2 = 200
 THREASHOLD_3 = 400
 
@@ -324,6 +323,16 @@ def get_plot_data(query_id):
     return dates, values
 
 
+def get_stat_data(query_id):
+    values1 = []
+    values2 = []
+    for result in Result.select().where(Result.query_id == query_id):
+        if result.when is not None:
+            values1.append(result.when.toordinal())
+            values2.append(result.intensity)
+    return values1, values2
+
+
 def show_plot(query_id):
     data = get_plot_data(query_id)
 
@@ -351,16 +360,24 @@ def show_hist(query_id, intervals_count):
     plt.show()
 
 
+def download_all(query_id):
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    apply(query_id, download2)
+    driver.quit()
+
 # query = search(QUERY_STRING, 0, 100)
-query_id = 148
+query_id = 149
 # apply(query_id, fill_date)
-# apply(150, download2)
+# download_all(query_id)
 # apply(query_id, calc_intensity_1)
 # apply(query_id, calc_intensity_2)
 # apply(query_id, calc_intensity_3)
 # apply(query_id, calc_intensity_composite)
 # apply(query_id, calc_intensity)
 
-show_hist(query_id, 24)
+# show_hist(query_id, 100)
 # show_plot(query_id)
 
+data = get_stat_data(query_id)
+r = stats.pearsonr(data[0], data[1])
+print(r)
