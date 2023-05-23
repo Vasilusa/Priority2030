@@ -13,7 +13,7 @@ from scipy import stats
 
 locale.setlocale(locale.LC_TIME, ('ru_RU', 'UTF-8'))
 
-QUERY_STRING = "Приоритет 2030"
+QUERY_STRING = "Приоритет 2030 site:vk.com"
 START = 0
 END = 1000
 DB_URL = 'postgresql://postgres:example@localhost:5432/Priority2030'
@@ -76,14 +76,17 @@ def search(query_string, start, end):
     current = start
     number = start
     while current < end:
-        print("Блок от %s\n" % start)
+        print("Блок от %s\n" % current)
         current = current + 10
         tbs = urllib.parse.quote_plus('cdr:1,cd_min:' + START_DATE + ',cd_max:' + END_DATE)
-        query_url = 'https://www.google.com/search?q=' + urllib.parse.quote_plus(QUERY_STRING) + '&start=' + str(start) + '&tbs=' + tbs
+        query_url = 'https://www.google.com/search?q=' + urllib.parse.quote_plus(QUERY_STRING) + '&start=' + str(current) + '&tbs=' + tbs
         print('Query URL = ' + query_url)
         resp = requests.get(query_url, headers={'Accept': 'text/html', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0'})
         dom = htmldom.HtmlDom().createDom(resp.content.decode(resp.encoding))
         els = dom.find("div#search div.yuRUbf")
+        if els.len == 0:
+            print('Конец списка. Последняя запись %s' % number)
+            break
         for el in els:
             url = el.find("a").attr("href")
             print('url=' + url)
@@ -129,7 +132,7 @@ def download(result, query):
         print("Не удается декодировать содержимое")
 
 
-def download2(result, query):
+def download2(result, driver):
     print(result.id, result.url)
     driver.get(result.url)
     result.content = driver.page_source
@@ -298,43 +301,46 @@ def fill_date(result, query):
         result.save()
 
 
-def get_hist_data(query_id):
+def get_hist_data(query_id, start_date, end_date):
     dates = []
     dates_1 = []
     dates_2 = []
     dates_3 = []
     for result in Result.select().where(Result.query_id == query_id):
-        dates.append(result.when)
-        if result.intensity == 1:
-            dates_1.append(result.when)
-        elif result.intensity == 2:
-            dates_2.append(result.when)
-        elif result.intensity == 3:
-            dates_3.append(result.when)
+        if result.when is not None and start_date <= result.when <= end_date:
+            dates.append(result.when)
+            if result.intensity == 1:
+                dates_1.append(result.when)
+            elif result.intensity == 2:
+                dates_2.append(result.when)
+            elif result.intensity == 3:
+                dates_3.append(result.when)
     return dates, dates_1, dates_2, dates_3
 
 
-def get_plot_data(query_id):
+def get_plot_data(query_id, start_date, end_date):
     dates = []
     values = []
     for result in Result.select().where(Result.query_id == query_id):
-        dates.append(result.when)
-        values.append(result.intensity_composite)
+        if result.when is not None and start_date <= result.when <= end_date:
+            dates.append(result.when)
+            values.append(result.intensity_composite)
     return dates, values
 
 
-def get_stat_data(query_id):
+def get_stat_data(query_id, start_date, end_date):
     values1 = []
     values2 = []
-    for result in Result.select().where(Result.query_id == query_id):
+    for result in Result.select().where(Result.query_id == query_id).order_by(Result.when.asc()):
         if result.when is not None:
-            values1.append(result.when.toordinal())
-            values2.append(result.intensity)
+            if start_date <= result.when <= end_date:
+                values1.append(result.intensity_1)
+                values2.append(result.intensity_2)
     return values1, values2
 
 
-def show_plot(query_id):
-    data = get_plot_data(query_id)
+def show_plot(query_id, start_date, end_date):
+    data = get_plot_data(query_id, start_date, end_date)
 
     plt.scatter(data[0], data[1])
     # plt.yscale('log')
@@ -342,8 +348,8 @@ def show_plot(query_id):
     plt.show()
 
 
-def show_hist(query_id, intervals_count):
-    hist_data = get_hist_data(query_id)
+def show_hist(query_id, intervals_count, start_date, end_date):
+    hist_data = get_hist_data(query_id, start_date, end_date)
 
     plt.hist(
         hist_data,
@@ -357,16 +363,22 @@ def show_hist(query_id, intervals_count):
     plt.ylabel('Количество упоминаний')
     plt.yscale('log')
     plt.legend()
+    plt.title('Заголовок графика')
+    plt.text(0, 0, 'Описание графика')
     plt.show()
 
 
 def download_all(query_id):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    apply(query_id, download2)
+    for result in Result.select().where(Result.query_id == query_id):
+        try:
+            download2(result, driver)
+        except:
+            print('Ошибка в callback функции')
     driver.quit()
 
-# query = search(QUERY_STRING, 0, 100)
-query_id = 149
+# query = search(QUERY_STRING, 0, 2000)
+query_id = 157
 # apply(query_id, fill_date)
 # download_all(query_id)
 # apply(query_id, calc_intensity_1)
@@ -375,9 +387,9 @@ query_id = 149
 # apply(query_id, calc_intensity_composite)
 # apply(query_id, calc_intensity)
 
-# show_hist(query_id, 100)
-# show_plot(query_id)
+# show_hist(query_id, 24, date(2021,1,1), date(2023,1,1))
+show_plot(query_id, date(2021, 1, 1), date(2023, 1, 1))
 
-data = get_stat_data(query_id)
-r = stats.pearsonr(data[0], data[1])
-print(r)
+# data = get_stat_data(query_id, date(2017,1,1), date(2023,5,1))
+# r = stats.spearmanr(data[0], data[1])
+# print(r)
