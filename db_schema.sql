@@ -35,3 +35,39 @@ CREATE TABLE IF NOT EXISTS public.result
 );
 
 ALTER TABLE public.result ADD "when" date;
+
+ALTER TABLE "result" ADD score1 INTEGER, ADD score2 INTEGER, ADD score3 INTEGER;
+
+CREATE TABLE IF NOT EXISTS public.analysis
+(
+    id serial NOT NULL,
+    model character varying COLLATE pg_catalog."default" NOT NULL,
+    version integer,
+    comment text COLLATE pg_catalog."default",
+    start_date date DEFAULT now(),
+    query_id integer NOT NULL DEFAULT nextval('analysis_query_id_seq'::regclass),
+    CONSTRAINT analysis_pkey PRIMARY KEY (id),
+    CONSTRAINT analysis_query_fk FOREIGN KEY (query_id)
+        REFERENCES public.query (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS public.analysis_result
+(
+    id bigserial NOT NULL,
+    analysis_id integer NOT NULL,
+    score_1 double precision,
+    score_2 double precision,
+    score_3 double precision,
+    result_id bigint NOT NULL,
+    CONSTRAINT analysis_result_pkey PRIMARY KEY (id),
+    CONSTRAINT analysis_result_analysis_fk FOREIGN KEY (analysis_id)
+        REFERENCES public.analysis (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT analysis_result_result_fk FOREIGN KEY (result_id)
+        REFERENCES public.result (id) MATCH SIMPLE
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);

@@ -1,4 +1,6 @@
 import urllib
+from _ast import In
+
 from htmldom import htmldom
 import requests
 from peewee import *
@@ -11,11 +13,13 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from scipy import stats
 
+from bert import Classifier as BertClassifier
+
 locale.setlocale(locale.LC_TIME, ('ru_RU', 'UTF-8'))
 
 QUERY_STRING = "Приоритет 2030 site:vk.com"
 START = 0
-END = 1000
+END = 10
 DB_URL = 'postgresql://postgres:example@localhost:5432/Priority2030'
 # DB_URL = 'postgresql://scan@localhost:5432/scan'
 START_DATE = '01.01.2017'
@@ -58,11 +62,39 @@ class Result(Model):
     intensity_3 = IntegerField()
     intensity_composite = IntegerField()
     when = DateField()
+    score1 = IntegerField()
+    score2 = IntegerField()
+    score3 = IntegerField()
 
     class Meta:
         database = db
         db_table = 'result'
 
+
+class Analysis(Model):
+    id = IntegerField(primary_key=True)
+    model = CharField()
+    version = IntegerField()
+    query_id = IntegerField()
+    comment = TextField()
+    start_date = DateField()
+
+    class Meta:
+        database = db
+        db_table = 'analysis'
+
+
+class AnalysisResult(Model):
+    id = IntegerField(primary_key=True)
+    analysis_id = IntegerField()
+    result_id = IntegerField()
+    score_1 = DoubleField()
+    score_2 = DoubleField()
+    score_3 = DoubleField()
+
+    class Meta:
+        database = db
+        db_table = 'analysis_result'
 
 def search(query_string, start, end):
     query = Query.create(
@@ -117,6 +149,33 @@ def apply(query_id, callback):
                 callback(result, query)
             except:
                 print('Ошибка в callback функции')
+
+
+def apply_to_all(query_id, classifier):
+    query = Query.select().where(Query.id == query_id).get()
+    messages_block = []
+    if query is not None:
+        results = Result.select().where(Result.query_id == query.id)
+        analysis = Analysis.create(
+            model=classifier.get_model(),
+            version=classifier.get_version(),
+            query_id=query.id
+        )
+        analysis.save()
+        for result in results:
+            messages_block.append(result.content)
+        scores = classifier.apply(messages_block)
+        index = 0
+        for result in results:
+            score = scores[index]
+            analysis_result = AnalysisResult.create(
+                analysis_id=analysis.id,
+                result_id=result.id,
+                score_1=score[0],
+                score_2=score[1]
+            )
+            analysis_result.save()
+            index = index + 1
 
 
 def download(result, query):
@@ -377,19 +436,24 @@ def download_all(query_id):
             print('Ошибка в callback функции')
     driver.quit()
 
-# query = search(QUERY_STRING, 0, 2000)
-query_id = 157
+# query = search(QUERY_STRING, 0, 20)
+# query_id = 157
 # apply(query_id, fill_date)
-# download_all(query_id)
+# download_all(query.id)
 # apply(query_id, calc_intensity_1)
 # apply(query_id, calc_intensity_2)
 # apply(query_id, calc_intensity_3)
 # apply(query_id, calc_intensity_composite)
 # apply(query_id, calc_intensity)
 
-# show_hist(query_id, 24, date(2021,1,1), date(2023,1,1))
-show_plot(query_id, date(2021, 1, 1), date(2023, 1, 1))
+# show_hist(query_id, 36, date(2017,1,1), date(2024,1,1))
+# show_plot(query_id, date(2021, 1, 1), date(2023, 1, 1))
 
 # data = get_stat_data(query_id, date(2017,1,1), date(2023,5,1))
 # r = stats.spearmanr(data[0], data[1])
 # print(r)
+
+
+# classifier = BertClassifier()
+
+# apply_to_all(query_id, classifier)
