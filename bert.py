@@ -7,7 +7,7 @@ os.environ["KERAS_BACKEND"] = "tensorflow"
 
 class Classifier:
     def __init__(self):
-        self.classifier = keras.saving.load_model("bert_tiny_imdb.dat")
+        self.classifier = keras.saving.load_model("bert_tiny_imdb.dat") #тут сохранены веса предобученной модели берт
 
     def get_model(self):
         return "bert_tiny_en_uncased_imdb"
@@ -16,4 +16,4 @@ class Classifier:
         return 1
 
     def apply(self, messages_block):
-        return self.classifier.predict(messages_block)
+        return self.classifier.predict(messages_block) # predict предсказывает результаты сообщений (результаты классификации)
