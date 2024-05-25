@@ -62,7 +62,7 @@ class Result(Model):
     intensity_3 = IntegerField()
     intensity_composite = IntegerField()
     when = DateField()
-    score1 = IntegerField()
+    score1 = IntegerField() #числовой коэф., показ. степень проявления признака
     score2 = IntegerField()
     score3 = IntegerField()
 
@@ -96,6 +96,8 @@ class AnalysisResult(Model):
         database = db
         db_table = 'analysis_result'
 
+#нужно переработать, т.к. он сохраняет кроме текста кучу все остального - заголовки, меню и т.д.
+#цель: искать не в гугле, а на некотором конкретном сайте
 def search(query_string, start, end):
     query = Query.create(
         query_string=query_string,
@@ -114,8 +116,8 @@ def search(query_string, start, end):
         query_url = 'https://www.google.com/search?q=' + urllib.parse.quote_plus(QUERY_STRING) + '&start=' + str(current) + '&tbs=' + tbs
         print('Query URL = ' + query_url)
         resp = requests.get(query_url, headers={'Accept': 'text/html', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0'})
-        dom = htmldom.HtmlDom().createDom(resp.content.decode(resp.encoding))
-        els = dom.find("div#search div.yuRUbf")
+        dom = htmldom.HtmlDom().createDom(resp.content.decode(resp.encoding)) #дерево объектной модели
+        els = dom.find("div#search div.yuRUbf") #нужные данные лежат в теге div с id search и классом yuRUbf (имя класса гугла)
         if els.len == 0:
             print('Конец списка. Последняя запись %s' % number)
             break
