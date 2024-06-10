@@ -12,8 +12,8 @@ LABELS = {
 
 
 class Data:
-    DATASET_DIR = 'data'
-    CACHE_DIR = 'cache'
+    DATASET_DIR = '../data'
+    CACHE_DIR = '../cache'
     mystem = Mystem()
 
     def __init__(self, data_dir, cache_dir):
